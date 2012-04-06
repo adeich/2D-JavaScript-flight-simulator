@@ -1,0 +1,17 @@
+game loop:
+  everything.update(dt);
+    airplane.update(dt);
+      airplane.updateParts(dt); // change angle of control surfaces,
+                                // calculate force contribution from each 
+        for part in planeParts:
+          part.updatePosition(dt, keystrokes);
+          part.calculateAeroForce(airplane.relV, part.position);
+          part.collisionDetect(airplane.relGround, part.position);
+          airplane.netForceVecAdd(part.force, part. position);
+      airplane.updateStateVector(dt);
+    earthSky.update(airplane.StateVector);
+  everything.draw(dt);
+    airplane.draw(dt);
+      for part in planeParts:
+        part.draw()
+    earthSky.draw(dt);
