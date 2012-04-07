@@ -1,13 +1,13 @@
-function sum( ) {
+linearAlgebra = {
+  sum: function sum( ) {
   outputSum = 0;
   for (i = 0; i < arguments.length; i++) {
       outputSum += arguments[i];
   }
   return outputSum;
-}
+},
 
-
-function vectorAdd(v1, v2) {
+vectorAdd: function(v1, v2) {
   if (v1.length != v2.length) {
     throw {
       name: 'WrongVectorDimensions',
@@ -21,10 +21,11 @@ function vectorAdd(v1, v2) {
     output[i] = v1[i] + v2[i]
   }
   return output;
-}
+},
+
 
 // recursive function; takes an array of matrices
-function matrixMultiply(inputMatrixList) {
+matrixMultiply : function(inputMatrixList) {
   m0 = inputMatrixList[0]; 
   m1 = inputMatrixList[1];
   
@@ -70,15 +71,50 @@ function matrixMultiply(inputMatrixList) {
   newInputMatrixList = [multipliedMatrix].concat(inputMatrixList);
   return  matrixMultiply(newInputMatrixList);  
   }
-}
+},
 
 
-
-
-function testJavaScript() {
-  sum = 0;
-  for (i = 0; i < arguments.length; i++) {
-      sum += arguments[i];
+// return the magnitude of an n-dimensional vector
+vectorMag : function(vec) {
+  var square_sum = 0;
+  for (i in vec) {
+    square_sum += vec[i] * vec[i];
   }
-  return arguments;
+  return Math.sqrt(square_sum);
+},
+
+// return the normalized version of an n-dimensional vector
+normalize: function(vec) {
+  var length = this.vectorMag(vec);
+  var out_vec = [];
+  for (i in vec) {
+    out_vec[i] = vec[i] / length;
+  }
+  return out_vec;
+},
+
+rotate2d: function(vector, rotation_angle) {
+    if (vector.length != 2) {throw "vector of wrong dimension!"};
+    var a = rotation_angle;
+    var round = function(m) {return Math.round(1000 * m) / 1000;};
+    var sin_a = Math.sin(a);
+    var cos_a = Math.cos(a);
+    new_angle = [];
+    var x = vector[0];
+    var y = vector[1];
+    new_angle[0] = round(x * cos_a - y * sin_a);
+    new_angle[1] = round(x * sin_a + y * cos_a);
+  
+    return new_angle;
+},
+
+//returns vec * m, where m is a scalar.
+scalarMult: function(vec, m) {
+  output_vec = [];
+  for (i in vec) {
+    output_vec[i] = vec[i] * m;
+  } 
+  return output_vec;
 }
+
+} // end of linearAlgebra
