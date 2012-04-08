@@ -1,5 +1,3 @@
-log = 'log:';
-
 
 Airplane = {
  initialize: function(pong) {
@@ -9,7 +7,7 @@ Airplane = {
 
       this.length = 40;   // meters. initially drawing plane as gray rectangle
       this.height = 15;   // meters
-      this.GRAVITY = 0* 100 * 10 *  9.8;  // m/s^2
+      this.GRAVITY =   510 * 10 *  9.8;  // m/s^2
 
   // ------- create state vector ---------
 
@@ -19,15 +17,15 @@ Airplane = {
         theta: 0,     // radians
         omega: 0,     // radians / sec
         mass: 1000, // kg
-        I: 100000,
+        I: 10000,
       }
 
   // ------- initialize state vector ----------
 
       this.SV.x[0] = this.pong.width / 2;  // x[0]; "x" normally
       this.SV.x[1] = this.pong.height/2;   // x[1]; "y" normally
-      this.SV.v[0] = 100;                   // v[0]; "dx" normally
-      this.SV.v[1] = 40;                    // v[1]; "dy" normally
+      this.SV.v[0] = 10;                   // v[0]; "dx" normally
+      this.SV.v[1] = 0;                    // v[1]; "dy" normally
 
    // ------- create plane's parts -----
 
@@ -35,61 +33,102 @@ Airplane = {
 
         elevator: {
           bodySpaceLoc: [-30, 0],
-          surface_area: 1,
+          surface_area: 10,
           angle: 0,                 // relative to plane body
           angle_xy: 0,
           angle_of_attack: 0,
           forceContribution: [0, 0],  // in the x-y frame.
           torqueContribution: 0,
-          wind_angle_xy: 0, 
           wind_vector_xy: [],
+          wind_angle_xy: 0, 
           planform_area: 0,
+          spin_velocity: [],
+          wind_speed: 0,
           updateElevatorAngle: function(clockwiseBool, dt) {},
           update: function(aircraftSV) {
             this.angle_xy = this.angle + aircraftSV.theta;
-            this.wind_angle_xy = Math.atan(aircraftSV.v[1] / aircraftSV.v[0]);
-   //         alert("wind_angle: " + wind_angle_in_xy);
-            this.angle_of_attack = this.angle_xy + this.wind_angle_xy;
-   //         alert("this.angle: " + this.angle + " angle_of_attack: " + angle_of_attack);
-            var wind_speed = linearAlgebra.vectorMag(aircraftSV.v);
-            this.wind_vector_xy = [aircraftSV.v[0], aircraftSV.v[1]];
+            this.spin_velocity = function(bodySpaceLoc) {
+              var displacement_from_cg_xy = linearAlgebra.rotate2d(bodySpaceLoc,
+                                               (-1) * aircraftSV.theta);
+              var perpendicular = linearAlgebra.rotate2d(displacement_from_cg_xy,(Math.PI/2));
+              return (linearAlgebra.scalarMult(perpendicular, (-1) *aircraftSV.omega));
+            }(this.bodySpaceLoc);
+            this.wind_vector_xy = linearAlgebra.vectorAdd(aircraftSV.v, this.spin_velocity);
+            if (linearAlgebra.vectorMag(this.wind_vector_xy) == 0) {
+              this.wind_angle_xy = 0;
+            } else {
+              this.wind_angle_xy = Math.atan(this.wind_vector_xy[1] / this.wind_vector_xy[0]);
+            }
+            this.angle_of_attack = (this.angle_xy + this.wind_angle_xy) % Math.PI;
+            this.wind_speed = linearAlgebra.vectorMag(this.wind_vector_xy);
             this.planform_area = this.surface_area * Math.sin(this.angle_of_attack);
             this.forceContribution = physics.computeAeroForce(this.surface_area,
-                                        this.angle_of_attack, wind_speed, this.wind_vector_xy); 
-   //         alert("force: " + this.forceContribution);
+                                     this.angle_of_attack, this.wind_speed, this.wind_vector_xy); 
             this.torqueContribution = physics.computeTorque(this.forceContribution, 
-                                                            this.bodySpaceLoc);
-   //         alert("torque: " + this.torqueContribution);
-          }  
+                                     linearAlgebra.rotate2d(this.bodySpaceLoc, (-1) * aircraftSV.theta));
+          //  alert(JSON.stringify(this));
+          } // end of update.  
+        }, // end of elevator.
+
+        
+        wing: {
+          bodySpaceLoc: [-1, 0],
+          surface_area: 30,
+          angle: 0,                 // relative to plane body
+          angle_xy: 0,
+          angle_of_attack: 0,
+          forceContribution: [0, 0],  // in the x-y frame.
+          torqueContribution: 0,
+          wind_vector_xy: [],
+          wind_angle_xy: 0, 
+          planform_area: 0,
+          spin_velocity: [],
+          wind_speed: 0,
+          updateElevatorAngle: function(clockwiseBool, dt) {},
+          update: function(aircraftSV) {
+            this.angle_xy = this.angle + aircraftSV.theta;
+            this.spin_velocity = function(bodySpaceLoc) {
+              var displacement_from_cg_xy = linearAlgebra.rotate2d(bodySpaceLoc,
+                                               (-1) * aircraftSV.theta);
+              var perpendicular = linearAlgebra.rotate2d(displacement_from_cg_xy,(Math.PI/2));
+              return (linearAlgebra.scalarMult(perpendicular, (-1) *aircraftSV.omega));
+            }(this.bodySpaceLoc);
+            this.wind_vector_xy = linearAlgebra.vectorAdd(aircraftSV.v, this.spin_velocity);
+            if (linearAlgebra.vectorMag(this.wind_vector_xy) == 0) {
+              this.wind_angle_xy = 0;
+            } else {
+              this.wind_angle_xy = Math.atan(this.wind_vector_xy[1] / this.wind_vector_xy[0]);
+            }
+            this.angle_of_attack = (this.angle_xy + this.wind_angle_xy) % Math.PI;
+            this.wind_speed = linearAlgebra.vectorMag(this.wind_vector_xy);
+            this.planform_area = this.surface_area * Math.sin(this.angle_of_attack);
+            this.forceContribution = physics.computeAeroForce(this.surface_area,
+                                     this.angle_of_attack, this.wind_speed, this.wind_vector_xy); 
+            this.torqueContribution = physics.computeTorque(this.forceContribution, 
+                                     linearAlgebra.rotate2d(this.bodySpaceLoc, (-1) * aircraftSV.theta));
+ 
+          }
         },
 
-        wing: {
-          surface_area: 7,   // this should really be set in some airplane-specs object.
-          bodySpaceLoc: [-10, 0],  
+        front_wheel: {
+          bodySpaceLoc: [10, -5],
+          spring_constant: 1,
+          EXTENDED_LENGTH: 1,
+          spring_contracted_length: 0,
           forceContribution: [0, 0],
           torqueContribution: 0,
-          wind_angle_xy: 0,
-          angle_of_attack: 0,
-          wind_vector_xy: [0,0],
-          planform_area: 0,
           update: function(aircraftSV) {
-            this.wind_angle_xy = Math.atan(aircraftSV.v[1] / aircraftSV.v[0]);
-   //         alert("wind_angle: " + wind_angle_in_xy);
-            this.angle_of_attack = aircraftSV.theta + this.wind_angle_xy;
-   //         alert("this.angle: " + this.angle + " angle_of_attack: " + angle_of_attack);
-            var wind_speed = linearAlgebra.vectorMag(aircraftSV.v);
-            this.wind_vector_xy = [aircraftSV.v[0], aircraftSV.v[1]];
-            this.planform_area = this.surface_area * Math.sin(this.angle_of_attack);
-            this.forceContribution = physics.computeAeroForce(this.surface_area,
-                                        this.angle_of_attack, wind_speed, this.wind_vector_xy); 
-   //         alert("force: " + this.forceContribution);
-            this.torqueContribution = physics.computeTorque(this.forceContribution, 
-                                                            this.bodySpaceLoc);
-   //         alert("torque: " + this.torqueContribution);
+            // if the wheel isn't touching the ground, do nothing.
+            if (aircraftSV.x[1] + this.extended_length < 1) {
+              this.forceContribution = [0,0];
+              this.torqueContribution = 0;
+              return;
+            }
+            this.spring_contracted_length = aircraftSV.x[1] - this.EXTENDED_LENGTH;
 
           }
-        } 
-      }
+        }, 
+      } // planeParts
   }, // initialize
 
 
@@ -176,23 +215,21 @@ Airplane = {
   //    this.SV.theta += this.SV.omega * dt;       // theta += omega * dt
       
       
-      var netForce = [0, this.GRAVITY]; 
+      var netForce = [0,  this.GRAVITY]; 
       var netTorque = 0;
      
-      
-      for (part in this.planeParts) {
+      for (var part in this.planeParts) {
         //  if (part.update(this.SV)) {part.update(this.SV)};
         this.planeParts[part].update(this.SV); 
         netForce = linearAlgebra.vectorAdd(netForce, this.planeParts[part].forceContribution);
         netTorque += this.planeParts[part].torqueContribution;
       }   
      
-      /*
+/*
         this.planeParts.elevator.update(this.SV); 
         netForce = linearAlgebra.vectorAdd(netForce, this.planeParts.elevator.forceContribution);
         netTorque += this.planeParts.elevator.torqueContribution;
-      */
-
+*/
       // reset the state vector to be the next one
       this.SV =  physics.computeNextSV(this.SV, netForce, netTorque, dt);
       
@@ -213,7 +250,7 @@ Airplane = {
                                          // move to cm position
       // BODY
       ctx.translate(0, -this.height/2);
-      ctx.rotate(-1 * this.SV.theta * Math.PI);  // rotate to plane's current att
+      ctx.rotate(-1 * this.SV.theta);  // rotate to plane's current att
       ctx.fillStyle = "gray";
       drawAirplaneBody(ctx);
 
@@ -244,9 +281,15 @@ Airplane = {
       ctx.fillText("elevator wind_angle_xy = " + this.planeParts.elevator.wind_angle_xy , 10, 120);
       ctx.fillText("wing force[0]  = " + this.planeParts.wing.forceContribution[0] , 10, 130);
       ctx.fillText("wing force[1]  = " + this.planeParts.wing.forceContribution[1] , 10, 140);
-      ctx.fillStyle = "blue";
-      ctx.fillRect(100, 160, this.planeParts.wing.forceContribution[0] / 20,this.planeParts.wing.forceContribution[1] /20);
-      ctx.fillStyle = "red";
-      ctx.fillRect(200, 160, this.planeParts.elevator.forceContribution[0] / 4 , this.planeParts.elevator.forceContribution[1] / 4);
+      ctx.fillText("spinvel[0]  = " + this.planeParts.elevator.spin_velocity[0] , 10, 150);
+      ctx.fillText("spinvel[1]  = " + this.planeParts.elevator.spin_velocity[1] , 10, 160);
+      ctx.fillText("elevator torque = " + this.planeParts.elevator.torqueContribution , 10, 170);
+      ctx.fillText("elevator windspeed= " + this.planeParts.elevator.wind_speed, 10, 180);
+      ctx.fillText("omega = " + this.SV.omega, 10, 190);
+      ctx.fillText("force magnitude = " + linearAlgebra.vectorMag(this.planeParts.elevator.forceContribution), 10, 200);
+//      ctx.fillStyle = "blue";
+//      ctx.fillRect(100, 160, this.planeParts.wing.forceContribution[0] / 20,this.planeParts.wing.forceContribution[1] /20);
+ //     ctx.fillStyle = "red";
+ //     ctx.fillRect(200, 160, this.planeParts.elevator.forceContribution[0] / 4 , this.planeParts.elevator.forceContribution[1] / 4);
     } // draw 
 } // Airplane 

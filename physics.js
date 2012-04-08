@@ -15,10 +15,10 @@ physics = {
     var alpha =  netTorque / SV.I;
 //    alert("alpha: " + alpha + " SV.I: " + SV.I + " nettorque: " + netTorque)
     // compute rotational velocity, a scalar.
-    var next_omega = SV.omega + (alpha * dt);
+    var next_omega = SV.omega + (alpha * dt); 
 //    alert("next_omega: " + next_omega)
     // compute rotational position, a scalar.
-    var next_theta = SV.theta + (next_omega * dt);
+    var next_theta = (SV.theta + (next_omega * dt)) % (2 * Math.PI);
 //    alert("next_theta" + next_theta)    
 
     var nextSV = {
@@ -37,20 +37,25 @@ physics = {
   // returns total force contribution in xy frame.
   computeAeroForce: function(surfaceArea, angle_of_attack, windSpeed,
                                    wind_vector_xy) {
+
     var ro = 1; // fluid density.
-    var co_l = function(){
-      var AOAdegrees = (180/Math.PI) * angle_of_attack;
-      if (Math.abs(AOAdegrees) > 25) { return 0; }
-      else {return (AOAdegrees * 0.001);}
-    }(); // coefficient of lift.
+    var co_l = function(){ // coefficient of lift.
+      var max_angle = Math.sin((Math.PI / 180) * 25);
+      var this_angle = Math.sin(angle_of_attack);
+      if (Math.abs(this_angle) > max_angle) { return 0; }
+      else if (Math.cos(angle_of_attack) < 0) {
+        return (this_angle * -0.1);
+      } else {
+          return (this_angle * 0.1);
+      }
+    }(); 
     var co_d = function(){
       var AOAdegrees = (180/Math.PI) * angle_of_attack;
-      return (AOAdegrees * 0.01);
+      return (AOAdegrees * 0.0002);
     }(); // coefficient of drag.
 
 
-   // alert(wind_vector_xy);
-    var planformArea = surfaceArea * Math.sin(angle_of_attack); 
+    var planformArea = Math.abs(surfaceArea * Math.sin(angle_of_attack)); 
     // compute lift magnitude.
     var lift_mag = (1/2) * ro * (windSpeed) * (windSpeed) * planformArea * co_l;
     // compute drag magnitude.
@@ -59,11 +64,11 @@ physics = {
     var net_force = [drag_mag, lift_mag];
  //   alert("lift_mag: " + lift_mag + " drag_mag: " + drag_mag )
     // rotate force vector to be in xy frame.
-    // var wind_angle_in_xy = Math.atan(wind_vector_xy[1] / wind_vector_xy[0]);
     var normalized_wind_vec = linearAlgebra.normalize(wind_vector_xy);
     var drag_xy = linearAlgebra.scalarMult(normalized_wind_vec, -1 * drag_mag);
     var lift_xy = linearAlgebra.scalarMult(linearAlgebra.rotate2d(normalized_wind_vec, Math.PI / 2)
                                               , -1 * lift_mag);
+
     var net_force_xy = linearAlgebra.vectorAdd(drag_xy, lift_xy);
 
     return net_force_xy;
@@ -73,7 +78,7 @@ physics = {
 
   //compute the torque exerted by force at displacement
   computeTorque: function(force, displacement) {
-    var torque = force[0] * displacement[1] - force[1] * displacement[0];
+    var torque = (force[0] * displacement[1]) - (force[1] * displacement[0]);
     return torque;
   }
 } // end of physics
